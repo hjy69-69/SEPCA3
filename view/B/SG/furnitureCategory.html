@@ -1,0 +1,231 @@
+<script src="../checkCountry.js"></script>
+<html>
+    <script src="../../header.js"></script>
+    <body>
+        <script>
+            // Get category from query parameter
+            var currentUrl = new URL(window.location.href);
+            var cat = currentUrl.searchParams.get("cat");
+            document.addEventListener('DOMContentLoaded', function(){
+                var countryId = localStorage.getItem('countryId');
+                fetch(new Request('/api/getFurnitureByCat?cat=' + encodeURIComponent(cat) + '&countryId=' + countryId,
+                {
+                    method: 'GET'
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    var htmlTxt = '';
+                   
+                    var furniture = data[0];
+                    // Generate HTML for furniture
+                    htmlTxt += '\
+                        <li class="col-md-3 col-sm-6 col-xs-12 product" style="padding-bottom: 1%;padding-top: 2%;">\
+                            <span class="product-thumb-info">\
+                                <span class="product-thumb-info-image">\
+                                    <span class="product-thumb-info-act">\
+                                        <span class="product-thumb-info-act-left">\
+                                            <a href="furnitureProductDetails.html?sku=' + furniture.sku + '" style="color: white"><em>View Details</em></a>\
+                                        </span>\
+                                    </span>\
+                                    <img alt="" class="img-responsive" src="' + furniture.imageURL + '">\
+                                </span>\
+                                <span class="product-thumb-info-content">\
+                                    <h4>' + furniture.name + '</h4>\
+                                    <span class="product-thumb-info-act-left">\
+                                        <em>Height: ' + furniture.height + '</em>\
+                                    </span><br/>\
+                                    <span class="product-thumb-info-act-left">\
+                                        <em>Length: ' + furniture.length + '</em>\
+                                    </span><br/>\
+                                    <span class="product-thumb-info-act-left">\
+                                        <em>Width: ' + furniture.width + '</em>\
+                                    </span><br/>\
+                                    <span class="product-thumb-info-act-left">\
+                                        <em>Price: $' + furniture.price + '.00</em>\
+                                    </span><br/>\
+                                    <form action="furnitureProductDetails.html">\
+                                        <input type="hidden" name="sku" value="' + furniture.sku + '"/>\
+                                        <input type="submit" class="btn btn-primary btn-block" value="More Details"/>\
+                                    </form>';
+                    // Check if user is logged in
+                    var memberEmail = sessionStorage.getItem('memberEmail');
+                    // Display 'Add To Cart' button only if user is logged in
+                    if(memberEmail != null && memberEmail != '') {
+                        htmlTxt += '<button class="btn btn-primary btn-block" onclick="addToCart(\'' + furniture.sku +
+                            '\',\'' + furniture.id + '\',' + furniture.price + ',\'' + furniture.name + '\',\'' + furniture.imageURL +
+                            '\')">Add To Cart</button>';
+                        // Add to Favorite button
+                        htmlTxt += '<button id="favBtn' + furniture.sku + '" class="btn btn-secondary btn-block" onclick="toggleFavorite(\'' + furniture.sku +
+                            '\',\'' + furniture.id + '\',' + furniture.price + ',\'' + furniture.name + '\',\'' + furniture.imageURL +
+                            '\')">Favorite</button>';
+                    }
+                    htmlTxt += '</span></span></li>'; 
+                   
+                    document.getElementById("furnituresDisplay").innerHTML = htmlTxt;
+                    document.getElementById("categoryTitle").innerHTML = cat;
+
+                    // Apply favorited status on page load
+                    applyFavoritedStatus();
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function addToCart(sku, id, price, name, imageURL) {
+                fetch(new Request('/api/getItemQuantity?sku=' + sku + '&storeId=-1',
+                {
+                    method: 'GET'
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    var quantity = data[0].sum;
+                    // If there is not enough quantity for a product to be added to the cart
+                    if(quantity == null || quantity == '') {
+                        var url = window.location.origin + window.location.pathname;
+                        window.location.href = url + '?cat=' + encodeURIComponent(cat) + '&errMsg=Item not added to cart, not enough quantity available.';
+                    }
+                    else {
+                        var allOk = true;
+                        var shoppingCart = JSON.parse(sessionStorage.getItem('shoppingCart'));
+                        // If shopping cart is empty
+                        if(shoppingCart == null || shoppingCart == '') {
+                            shoppingCart = [];
+                            shoppingCart.push({
+                                id: id,
+                                sku: sku,
+                                price: price,
+                                name: name,
+                                imgURL: imageURL,
+                                quantity: 1
+                            });
+                        }
+                        else {
+                            var exist = false;
+                            for(i = 0; i < shoppingCart.length; i++) {
+                                var cartItem = shoppingCart[i];
+                                // If item already exists in the cart, add 1 to the quantity
+                                if(cartItem.sku == sku) {
+                                    if (shoppingCart[i].quantity == quantity) {
+                                        var url = window.location.origin + window.location.pathname;
+                                        window.location.href = url + '?cat=' + encodeURIComponent(cat) + '&errMsg=Item not added to cart, not enough quantity available.';
+                                        exist = true;
+                                        allOk = false;
+                                    }
+                                    else {
+                                        shoppingCart[i].quantity += 1;
+                                        exist = true;
+                                    }
+                                }
+                            }
+                            // If item is new in the cart
+                            if (!exist) {
+                                shoppingCart.push({
+                                    id: id,
+                                    sku: sku,
+                                    price: price,
+                                    name: name,
+                                    imgURL: imageURL,
+                                    quantity: 1
+                                });
+                            }
+                        }
+                        if (allOk) {
+                            sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                            var url = window.location.origin + window.location.pathname;
+                            window.location.href = url + '?cat=' + encodeURIComponent(cat) + '&goodMsg=Successfully added!';
+                        }
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            }
+
+            // Toggle Favorite function
+            function toggleFavorite(sku, id, price, name, imageURL) {
+                var favorites = JSON.parse(sessionStorage.getItem('favorites')) || [];
+                var favoritedStatus = JSON.parse(sessionStorage.getItem('favoritedStatus')) || {};
+                var exist = false;
+
+                // Check if the item is already in favorites
+                for (var i = 0; i < favorites.length; i++) {
+                    if (favorites[i].sku === sku) {
+                        favorites.splice(i, 1); // Remove item from favorites
+                        exist = true;
+                        break;
+                    }
+                }
+
+                // If the item is not in favorites, add it
+                if (!exist) {
+                    favorites.push({
+                        id: id,
+                        sku: sku,
+                        price: price,
+                        name: name,
+                        imgURL: imageURL
+                    });
+                    window.location.href = 'favourite.html';
+                }
+
+                // Update sessionStorage
+                sessionStorage.setItem('favorites', JSON.stringify(favorites));
+                favoritedStatus[sku] = !exist; // Toggle the favorited status
+                sessionStorage.setItem('favoritedStatus', JSON.stringify(favoritedStatus));
+
+                // Update button style
+                var favButton = document.getElementById('favBtn' + sku);
+                if (exist) {
+                    favButton.style.backgroundColor = '';
+                    favButton.innerText = 'Favorite';
+                } else {
+                    favButton.style.backgroundColor = 'red';
+                    favButton.innerText = 'Favorited';
+                }
+            }
+
+            // Apply favorited status on page load
+            function applyFavoritedStatus() {
+                var favoritedStatus = JSON.parse(sessionStorage.getItem('favoritedStatus')) || {};
+                for (var sku in favoritedStatus) {
+                    if (favoritedStatus[sku]) {
+                        var favButton = document.getElementById('favBtn' + sku);
+                        if (favButton) {
+                            favButton.style.backgroundColor = 'red';
+                            favButton.innerText = 'Favorited';
+                        }
+                    }
+                }
+            }
+        </script>
+        <div class="body">
+            <script src="menu2.js"></script>
+            <div class="body">
+                <div role="main" class="main">
+                    <section class="page-top">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h2>Furnitures</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="container">
+                        <script src="/displayMessageLong.js"></script>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h2 class="shorter"><strong id="categoryTitle"></strong></h2>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <ul id="furnituresDisplay" class="products product-thumb-info-list" style="list-style-type: none; margin-left: -3%;" data-plugin-masonry></ul>
+                        </div>
+                        <hr class="tall">
+                    </div>
+                </div>
+            </div>
+            <script src="../footer.js"></script>
+        </div>
+    </body>
+</html>
+

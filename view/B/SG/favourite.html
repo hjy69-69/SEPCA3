@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retail Products</title>
+    <style>
+        .favorite-btn {
+            cursor: pointer;
+            font-size: 1.5em;
+            margin-left: 10px;
+        }
+
+        .favorite-btn.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .favorite-btn.not-favorited::before {
+            content: '♡'; /* White heart */
+            color: black;
+        }
+
+        .favorite-btn.favorited::before {
+            content: '❤️'; /* Red heart */
+        }
+    </style>
+</head>
+<body>
+    <!-- Include necessary scripts -->
+    <script src="../checkCountry.js"></script>
+    <script src="../../header.js"></script>
+    <script>
+        // Function to initialize favorites functionality
+        function initializeFavorites() {
+            const favorites = JSON.parse(sessionStorage.getItem('favorites')) || [];
+            favorites.forEach(fav => {
+                const favBtn = document.querySelector(`button[data-item-id="${fav.sku}"]`);
+                if (favBtn) {
+                    favBtn.classList.remove('not-favorited');
+                    favBtn.classList.add('favorited');
+                }
+            });
+
+            // Add event listener to each favorite button
+            document.querySelectorAll('.favorite-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const sku = this.getAttribute('data-item-id');
+                    const productElement = this.closest('.product');
+                    const id = productElement.querySelector('input[name="sku"]').value;
+                    const price = productElement.querySelector('.product-thumb-info-act-left em').innerText.replace('Price: $', '');
+                    const name = productElement.querySelector('h4').innerText;
+                    const imageURL = productElement.querySelector('img').getAttribute('src');
+
+                    if (this.classList.contains('favorited')) {
+                        removeFromFavorites(sku);
+                        this.classList.remove('favorited');
+                        this.classList.add('not-favorited');
+                    } else {
+                        addToFavorites(sku, id, price, name, imageURL);
+                        this.classList.remove('not-favorited');
+                        this.classList.add('favorited');
+                    }
+                });
+            });
+
+            displayFavorites(); // Display initial favorites
+        }
+
+        // Function to add item to favorites
+        function addToFavorites(sku, id, price, name, imageURL) {
+            var favorites = JSON.parse(sessionStorage.getItem('favorites')) || [];
+            var exist = favorites.some(fav => fav.sku === sku);
+            if (!exist) {
+                favorites.push({ id, sku, price, name, imgURL: imageURL });
+                sessionStorage.setItem('favorites', JSON.stringify(favorites));
+                displayFavorites(); // Update displayed favorites
+                updateFurniturePageFavorites(sku, true); // Update furniture page favorite status
+            }
+        }
+
+        // Function to remove item from favorites
+        function removeFromFavorites(sku) {
+            var favorites = JSON.parse(sessionStorage.getItem('favorites')) || [];
+            favorites = favorites.filter(fav => fav.sku !== sku);
+            sessionStorage.setItem('favorites', JSON.stringify(favorites));
+            displayFavorites(); // Update displayed favorites
+            updateFurniturePageFavorites(sku, false); // Update furniture page favorite status
+        }
+
+        // Function to display favorites in the UI
+        function displayFavorites() {
+            const favorites = JSON.parse(sessionStorage.getItem('favorites')) || [];
+            let favoritesHtml = '';
+
+            favorites.forEach(fav => {
+                favoritesHtml += `
+                    <li class="col-md-3 col-sm-6 col-xs-12 product" style="padding-bottom: 1%; padding-top: 2%;">
+                        <span class="product-thumb-info">
+                            <span class="product-thumb-info-image">
+                                <img alt="" class="img-responsive" src="${fav.imgURL}">
+                            </span>
+                            <span class="product-thumb-info-content">
+                                <h4>${fav.name}</h4>
+                                <span class="product-thumb-info-act-left">
+                                    <em>Price: $${fav.price}.00</em>
+                                </span><br/>
+                                <button class="favorite-btn favorited" data-item-id="${fav.sku}" onclick="removeFromFavorites('${fav.sku}')"></button>
+                            </span>
+                        </span>
+                    </li>`;
+            });
+
+            document.getElementById("favoritesDisplay").innerHTML = favoritesHtml; // Update favorites display
+        }
+
+        // Function to update favorites status in furnitureCategory.html
+        function updateFurniturePageFavorites(sku, favorited) {
+            var favoritedStatus = JSON.parse(sessionStorage.getItem('favoritedStatus')) || {};
+            favoritedStatus[sku] = favorited;
+            sessionStorage.setItem('favoritedStatus', JSON.stringify(favoritedStatus));
+
+            var favButton = document.getElementById('favBtn' + sku);
+            if (favButton) {
+                if (favorited) {
+                    favButton.style.backgroundColor = 'red';
+                    favButton.innerText = 'Favorited';
+                } else {
+                    favButton.style.backgroundColor = '';
+                    favButton.innerText = 'Favorite';
+                }
+            }
+        }
+
+        // Fetch data and initialize favorites on page load
+        var countryPrefix = sessionStorage.getItem('urlPrefix');
+        var currentUrl = new URL(window.location.href);
+        var cat = currentUrl.searchParams.get("cat");
+        var countryId = sessionStorage.getItem('countryId');
+
+        fetch(new Request('/api/getRetailProductByCat?cat=' + encodeURIComponent(cat) + '&countryId=' + countryId, {
+            method: 'GET'
+        }))
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (data) {
+            var htmlTxt = '';
+            data.forEach(product => {
+                htmlTxt += `
+                    <li class="col-md-3 col-sm-6 col-xs-12 product" style="padding-bottom: 1%; padding-top: 2%;">
+                        <span class="product-thumb-info">
+                            <span class="product-thumb-info-image">
+                                <span class="product-thumb-info-act">
+                                    <span class="product-thumb-info-act-left">
+                                        <a href="/B/${countryPrefix}/retailProductDetails.html?sku=${product.sku}" style="color: white"><em>View Details</em></a>
+                                    </span>
+                                </span>
+                                <img alt="" class="img-responsive" src="${product.imageURL}">
+                            </span>
+                            <span class="product-thumb-info-content">
+                                <h4>${product.name}</h4>
+                                <span class="product-thumb-info-act-left">
+                                    <em>Price: $${product.price}.00</em>
+                                </span><br/>
+                                <button class="favorite-btn not-favorited" data-item-id="${product.sku}"></button>
+                                <form action="retailProductDetails.html">
+                                    <input type="hidden" name="sku" value="${product.sku}"/>
+                                    <input type="submit" class="btn btn-primary btn-block" value="More Details"/>
+                                </form>
+                            </span>
+                        </span>
+                    </li>`;
+            });
+            document.getElementById("retailProductsDisplay").innerHTML = htmlTxt; // Update retail products display
+            document.getElementById("categoryTitle").innerHTML = cat; // Update category title
+            initializeFavorites(); // Initialize favorites functionality
+        })
+        .catch(function(error) {
+            console.log(error);
+        });
+
+        // Call displayFavorites on page load to show favorite products
+        document.addEventListener('DOMContentLoaded', displayFavorites);
+    </script>
+    <!-- Body content -->
+    <div class="body">
+        <script src="menu2.js"></script>
+        <div class="body">
+            <div role="main" class="main">
+                <section class="page-top">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h2>Retail Products</h2>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h2 class="shorter"><strong id="categoryTitle"></strong></h2>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <ul id="retailProductsDisplay" class="products product-thumb-info-list" style="list-style-type: none; margin-left: -3%;" data-plugin-masonry></ul>
+                    </div>
+                    <hr class="tall">
+                </div>
+                <div class="container">
+                    <h2>Favorites</h2>
+                    <ul id="favoritesDisplay" class="products product-thumb-info-list" style="list-style-type: none; margin-left: -3%;"></ul>
+                </div>
+            </div>
+        </div>
+        <script src="../footer.js"></script>
+    </div>
+</body>
+</html>
