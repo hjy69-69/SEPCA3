@@ -3,6 +3,13 @@ var app = express();
 let middleware = require('./middleware');
 
 var member = require('../model/memberModel.js');
+
+// Middleware and other configurations
+var bodyParser = require('body-parser');
+var jsonParser = bodyParser.json({ extended: false });
+var request = require('request');
+
+// API to get member authentication state
 app.get('/api/memberAuthState', middleware.checkToken, function (req, res) {
     var email = req.query.email;
     member.getMemberAuthState(email)
@@ -15,6 +22,7 @@ app.get('/api/memberAuthState', middleware.checkToken, function (req, res) {
         });
 });
 
+// API to get member details
 app.get('/api/getMember', function (req, res) {
     var email = req.query.email;
     member.getMember(email)
@@ -27,6 +35,7 @@ app.get('/api/getMember', function (req, res) {
         });
 });
 
+// API to get bought items
 app.get('/api/getBoughtItem/:id', middleware.checkToken, function (req, res) {
     var id = req.params.id;
     member.getBoughtItem(id)
@@ -39,6 +48,7 @@ app.get('/api/getBoughtItem/:id', middleware.checkToken, function (req, res) {
         });
 });
 
+// API to check if member email exists
 app.get('/api/checkMemberEmailExists', function (req, res) {
     var email = req.query.email;
     member.checkMemberEmailExists(email)
@@ -51,32 +61,20 @@ app.get('/api/checkMemberEmailExists', function (req, res) {
         });
 });
 
+// API to get password reset code
 app.get('/api/getPasswordResetCode', function (req, res) {
     var email = req.query.email;
-    member.checkMemberEmailExists(email)
+    member.getPasswordResetCode(email)
         .then((result) => {
-            if(result) {
-                member.getPasswordResetCode(email)
-                    .then((result) => {
-                        res.send({success:true, code:result.passwordReset});
-                    })
-                    .catch((err) => {
-                        console.log(err);
-                        res.status(500).send("Failed to get password reset code");
-                    });
-            }
-            else {
-                res.send({success: false});
-            }
+            res.send({ success: true, code: result.passwordReset });
         })
         .catch((err) => {
             console.log(err);
-            res.status(500).send("Failed to check if member email exists");
+            res.status(500).send("Failed to get password reset code");
         });
 });
 
-var bodyParser = require('body-parser');
-var jsonParser = bodyParser.json({ extended: false });
+// API to login member
 app.post('/api/loginMember', jsonParser, function (req, res) {
     var email = req.body.email;
     var password = req.body.password;
@@ -90,16 +88,15 @@ app.post('/api/loginMember', jsonParser, function (req, res) {
         });
 });
 
-var request = require('request');
+// API to register member without email verification
 app.post('/api/registerMember', jsonParser, function (req, res) {
     var email = req.body.email;
     var password = req.body.password;
     var recaptcha = req.body.recaptcha;
     var hostName = req.body.hostName;
-    if(recaptcha == null || recaptcha == undefined || recaptcha == '') {
-        res.send({ "success":false, "errorMsg" : "Please select captcha" });
-    }
-    else {
+    if (recaptcha == null || recaptcha == undefined || recaptcha == '') {
+        res.send({ "success": false, "errorMsg": "Please select captcha" });
+    } else {
         var secretKey = "6LcLaXYUAAAAAALjkMho0ywJyylxa0kUOylNG7SU";
         var verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + secretKey
             + "&response=" + recaptcha + "&remoteip=" + req.connection.remoteAddress;
@@ -107,11 +104,10 @@ app.post('/api/registerMember', jsonParser, function (req, res) {
             body = JSON.parse(body);
             if (body.success !== undefined && !body.success) {
                 res.send({ "errorMsg": "Failed captcha verification" });
-            }
-            else {
+            } else {
                 member.registerMember(email, password, hostName)
                     .then((result) => {
-                        res.send(result);
+                        res.send({ success: true });
                     })
                     .catch((err) => {
                         console.log(err);
@@ -122,6 +118,7 @@ app.post('/api/registerMember', jsonParser, function (req, res) {
     }
 });
 
+// API to send password reset email
 app.post('/api/sendPasswordReset', jsonParser, function (req, res) {
     var email = req.body.email;
     var url = req.body.url;
@@ -135,6 +132,7 @@ app.post('/api/sendPasswordReset', jsonParser, function (req, res) {
         });
 });
 
+// API to send feedback
 app.post('/api/sendFeedback', jsonParser, function (req, res) {
     var name = req.body.name;
     var email = req.body.email;
@@ -150,6 +148,7 @@ app.post('/api/sendFeedback', jsonParser, function (req, res) {
         });
 });
 
+// API to verify password
 app.post('/api/verifyPassword', jsonParser, function (req, res) {
     var id = req.body.id;
     var password = req.body.password;
@@ -163,37 +162,14 @@ app.post('/api/verifyPassword', jsonParser, function (req, res) {
         });
 });
 
-app.put('/api/activateMemberAccount', jsonParser, function (req, res) {
-    var email = req.body.email;
-    var activationCode = req.body.activateCode;
-    if(email != null && email != '' && activationCode != null && activationCode != '') {
-        member.getMemberActivateCode(email)
-        .then((result) => {
-            if(result.activationCode == activationCode) {
-                member.memberActivateAccount(email)
-                .then((result) => {
-                    res.send(result);
-                })
-                .catch((err) => {
-                    console.log(err);
-                    res.status(500).send("Failed to activate member account");
-                });
-            }
-            else {
-                res.status(500).send("Failed to activate member account");
-            }
-        })
-        .catch((err) => {
-            console.log(err);
-            res.status(500).send("Failed to activate member account");
-        });
-    }
-});
+// Removed API to activate member account
+// No need to verify email after account creation
 
+// API to update member details
 app.put('/api/updateMember', [middleware.checkToken, jsonParser], function (req, res) {
     member.updateMember(req.body)
         .then((result) => {
-            if(result.success) {
+            if (result.success) {
                 member.getMember(req.body.email)
                     .then((result) => {
                         res.send(result);
@@ -210,10 +186,11 @@ app.put('/api/updateMember', [middleware.checkToken, jsonParser], function (req,
         });
 });
 
+// API to update member password
 app.put('/api/updateMemberPassword', jsonParser, function (req, res) {
     var email = req.body.email;
     var password = req.body.password;
-    member.updateMemPasswordAndResetCode(email,password)
+    member.updateMemPasswordAndResetCode(email, password)
         .then((result) => {
             res.send(result);
         })
@@ -223,15 +200,16 @@ app.put('/api/updateMemberPassword', jsonParser, function (req, res) {
         });
 });
 
+// API to update member delivery details
 app.put('/api/updateMemberDeliveryDetails', [middleware.checkToken, jsonParser], function (req, res) {
     var email = req.body.email;
     var name = req.body.name;
     var contactNum = req.body.contactNum;
     var address = req.body.address;
     var postalCode = req.body.postalCode;
-    member.updateMemberDeliveryDetails(email,name,contactNum,address,postalCode)
+    member.updateMemberDeliveryDetails(email, name, contactNum, address, postalCode)
         .then((result) => {
-            if(result.success) {
+            if (result.success) {
                 member.getMember(req.body.email)
                     .then((result) => {
                         res.send(result);

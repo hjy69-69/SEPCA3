@@ -24,7 +24,6 @@ document.write('\
                     welcomeText = "";\
                 }\
                 document.getElementById("memberName").innerHTML = "Welcome " + welcomeText + "!";\
-                document.getElementById("profileName").innerHTML = "Welcome " + welcomeText + "!";\
                 document.getElementById("favouriteLink").classList.remove("disabled-link");\
             }\
     \
@@ -75,7 +74,6 @@ document.write('\
             <div id="menuLoggedIn" style="display: none;">\
                 <nav>\
                     <ul class="nav nav-pills nav-top">\
-                        <li><a id="memberName"></a></li>\
                         <li class="storeLocationMenu">\
                             <a href="/B/' + countryPrefix + '/storeLocation.html"><i class="icon icon-map-marker"></i>Store Location</a>\
                         </li>\
@@ -91,6 +89,7 @@ document.write('\
                         <li>\
                             <a href="#" onclick="logout()"><i class="icon icon-unlock-alt"></i>Logout</a>\
                         </li>\
+                        <li>\<a id="memberName"></a></li>\
                     </ul>\
                     <button class="btn btn-responsive-nav btn-inverse" data-toggle="collapse" data-target=".nav-main-collapse">\
                         <i class="icon icon-bars"></i>\
@@ -125,6 +124,9 @@ document.write('\
                         </li>\
                         <li>\
                         <a id="favouriteLink"><i class="icon icon-heart"></i> Favourite</a>\
+                        </li>\
+                        <li>\
+                            <a href="/B/' + countryPrefix + '/saleOrderRecords.html">Customer Sales History</a>\
                         </li>\
                     </ul>\
                 </nav>\
