@@ -1,0 +1,80 @@
+<script src="../../header.js"></script>
+    <body>
+        <script>
+            document.addEventListener('DOMContentLoaded', function(){
+                fetch(new Request('/api/getAllSaleOrderRecord', { 
+                    method: 'GET' 
+                }
+            ))
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        var htmlTxt = '';
+                        data.forEach(function(product) {
+                            htmlTxt += '\
+                                <li class="col-md-3 col-sm-6 col-xs-12 product" style="padding-bottom: 1%; padding-top: 2%;">\
+                                    <span class="product-thumb-info">\
+                                        <span class="product-thumb-info-image">\
+                                            <span class="product-thumb-info-act">\
+                                                <span class="product-thumb-info-act-left">\
+                                                </span>\
+                                            </span>\
+                                        </span>\
+                                       <span class="product-thumb-info-content">\
+                                            <h3 style="color: #d9534f">ID: ' + product.id + '</h3>\
+                                            <h5 style="font-weight: bold">Member ID: ' + product.memberId + '</h5>\
+                                            <p>Store ID: ' + product.storeId + '</p>\
+                                            <p>Amount Due: $' + product.amountDue + '</p>\
+                                            <p>Amount Paid: $' + product.amountPaid + '</p>\
+                                            <p>Amount Paid Using Points: $' + product.amountPaidUsingPoints + '</p>\
+                                            <p>Currency: ' + product.currency + '</p>\
+                                            <p>Created Date: ' + product.createdDate.slice(0, 10) + '</p>\
+                                            <p>Loyalty Points Deducted: ' + product.loyaltyPointsDeducted + '</p>\
+                                            <p>POS Name: ' + product.posName + '</p>\
+                                            <p>Receipt Number: ' + product.receiptNum + '</p>\
+                                            <p>Served By Staff: ' + product.servedByStaff + '</p>\
+                                        </span>\
+                                    </span>\
+                                </li>';
+                        });
+                        document.getElementById("retailProductsDisplay").innerHTML = htmlTxt;
+                    })
+                    .catch(function(error) {
+                        console.log('Fetch error: ', error);
+                    });
+            }, false);
+        </script>
+        <div class="body">
+            <script src="menu2.js"></script>
+            <div class="body">
+                <div role="main" class="main">
+                    <section class="page-top">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h2>Customer Sales History</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h2 class="shorter"><strong id="categoryTitle"></strong></h2>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <ul id="retailProductsDisplay" class="products product-thumb-info-list" style="list-style-type: none; margin-left: -3%;" data-plugin-masonry></ul>
+                        </div>
+                        <hr class="tall">
+                    </div>
+                </div>
+            </div>
+            <script src="../footer.js"></script>
+        </div>
+    </body>
+</html>
